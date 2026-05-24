@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { AppHeader } from './components/AppHeader'
 import { ActualizarModal } from './components/ActualizarModal'
+import { ScoreModal } from './components/ScoreModal'
+import { NotasVersionModal } from './components/NotasVersionModal'
 import { BottomNav, type Tab } from './components/BottomNav'
 import { Card } from './components/Card'
 import { LocationPicker } from './components/LocationPicker'
@@ -17,6 +19,7 @@ import { calcularLuna } from './lib/moon'
 import { calcularCondiciones, calcularVentanas, type CondicionItem, type VentanaPesca } from './lib/pesca'
 import { calcularPeriodosSolunares, proximosPeriodos, periodoEnCurso, formatHora, type PeriodoSolunar } from './lib/solunar'
 import type { ExtremoMarea } from './lib/tide'
+import { APP_VERSION, NOTAS_ACTUALES } from './lib/version'
 import { Clima } from './screens/Clima'
 import { MapaNautico } from './screens/MapaNautico'
 import { Salidas } from './screens/Salidas'
@@ -570,7 +573,17 @@ function App() {
   const [pickerOpen,    setPickerOpen]    = useState(false)
   const [tab,           setTab]           = useState<Tab>('inicio')
   const [updateVisible, setUpdateVisible] = useState(true)
+  const [scoreOpen,     setScoreOpen]     = useState(false)
+  const [notasVisible,  setNotasVisible]  = useState(() => {
+    try { return localStorage.getItem('notasVersionVistas') !== APP_VERSION }
+    catch { return false }
+  })
   const appUpdate = useAppUpdate()
+
+  function cerrarNotas() {
+    try { localStorage.setItem('notasVersionVistas', APP_VERSION) } catch {}
+    setNotasVisible(false)
+  }
   // Live timestamp — updates every 60 s so tide chart cursor moves
   const [nowMs, setNowMs] = useState(() => Date.now())
   useEffect(() => {
@@ -673,6 +686,7 @@ function App() {
             locationName={location.name}
             onLocationClick={() => setPickerOpen(true)}
             scoreColor={condiciones.color}
+            onScoreClick={() => setScoreOpen(true)}
             extra={
               appUpdate.update && !updateVisible ? (
                 <button
@@ -696,12 +710,15 @@ function App() {
           {/* CONDICIONES DE PESCA */}
           <Card title="Condiciones de Pesca">
             <div className="flex items-center gap-0">
-              <div className="shrink-0 flex flex-col items-center pr-3">
+              <button
+                onClick={() => setScoreOpen(true)}
+                className="shrink-0 flex flex-col items-center pr-3 active:opacity-70"
+              >
                 <GaugePesca score={condiciones.score} color={condiciones.color} etiqueta={condiciones.etiqueta} />
                 <p className="text-[11px] text-slate-500 text-center max-w-[100px] leading-tight -mt-1">
                   {condiciones.explicacion}
                 </p>
-              </div>
+              </button>
               <div className="self-stretch w-px bg-white/[0.08] shrink-0" />
               <div className="flex-1 flex flex-col gap-3.5 pl-4">
                 {condiciones.condiciones.map(c => (
@@ -969,6 +986,22 @@ function App() {
             appUpdate.cancelar()
             setUpdateVisible(false)
           }}
+        />
+      )}
+
+      {/* ── SCORE DESGLOSE ─────────────────────────── */}
+      {scoreOpen && (
+        <ScoreModal
+          condiciones={condiciones}
+          onCerrar={() => setScoreOpen(false)}
+        />
+      )}
+
+      {/* ── NOTAS DE VERSIÓN ───────────────────────── */}
+      {notasVisible && (
+        <NotasVersionModal
+          notas={NOTAS_ACTUALES}
+          onCerrar={cerrarNotas}
         />
       )}
 

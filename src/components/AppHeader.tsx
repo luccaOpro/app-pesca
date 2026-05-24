@@ -15,6 +15,8 @@ interface Props {
   extra?: React.ReactNode
   /** Color del indicador de condición de pesca (punto pulsante) */
   scoreColor?: string
+  /** Si se provee, el área izquierda (dot + fecha) es tappable para abrir desglose */
+  onScoreClick?: () => void
 }
 
 function formatFechaCorta(d: Date): string {
@@ -36,29 +38,43 @@ export function AppHeader({
   onLocationClick,
   extra,
   scoreColor,
+  onScoreClick,
 }: Props) {
+  const leftInner = (
+    <>
+      {scoreColor && (
+        <span
+          className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse"
+          style={{ background: scoreColor, boxShadow: `0 0 6px ${scoreColor}90` }}
+        />
+      )}
+      {titulo ? (
+        <span className="text-base font-semibold text-slate-100 truncate">{titulo}</span>
+      ) : (
+        <div className="flex items-baseline gap-2 min-w-0">
+          <span className="text-[10px] font-semibold tracking-[0.18em] uppercase text-slate-500">
+            {etiqueta}
+          </span>
+          <span className="text-sm font-semibold text-slate-200 truncate">
+            {formatFechaCorta(fecha ?? new Date())}
+          </span>
+        </div>
+      )}
+    </>
+  )
+
   return (
     <header className="shrink-0 bg-[#0B1928]/95 backdrop-blur-md border-b border-white/[0.05] px-4 pt-safe-plus-3 pb-2.5 flex items-center justify-between gap-2">
-      <div className="flex items-center gap-2 min-w-0">
-        {scoreColor && (
-          <span
-            className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse"
-            style={{ background: scoreColor, boxShadow: `0 0 6px ${scoreColor}90` }}
-          />
-        )}
-        {titulo ? (
-          <span className="text-base font-semibold text-slate-100 truncate">{titulo}</span>
-        ) : (
-          <div className="flex items-baseline gap-2 min-w-0">
-            <span className="text-[10px] font-semibold tracking-[0.18em] uppercase text-slate-500">
-              {etiqueta}
-            </span>
-            <span className="text-sm font-semibold text-slate-200 truncate">
-              {formatFechaCorta(fecha ?? new Date())}
-            </span>
-          </div>
-        )}
-      </div>
+      {onScoreClick ? (
+        <button
+          onClick={onScoreClick}
+          className="flex items-center gap-2 min-w-0 active:opacity-70"
+        >
+          {leftInner}
+        </button>
+      ) : (
+        <div className="flex items-center gap-2 min-w-0">{leftInner}</div>
+      )}
       <div className="flex items-center gap-1.5 shrink-0">
         {extra}
         <LocationPill name={locationName} onClick={onLocationClick} />

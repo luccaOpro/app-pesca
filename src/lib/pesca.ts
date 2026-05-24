@@ -7,19 +7,30 @@ export interface CondicionItem {
   estado: 'bueno' | 'regular' | 'malo'
 }
 
+export interface FactorScore {
+  icono:    string
+  nombre:   string
+  peso:     number   // 0–1 (e.g. 0.25)
+  subScore: number   // 0–100
+  puntos:   number   // Math.round(subScore * peso)
+  detalle:  string
+  estado:   'bueno' | 'regular' | 'malo'
+}
+
 export interface ResultadoCondiciones {
-  score: number
-  etiqueta: string
-  color: string
+  score:       number
+  etiqueta:    string
+  color:       string
+  factores:    FactorScore[]
   condiciones: CondicionItem[]
   explicacion: string
 }
 
 export interface VentanaPesca {
-  periodo: string
-  inicio: string
-  fin: string
-  calidad: 'Excelente' | 'Muy buena' | 'Buena' | 'Regular'
+  periodo:      string
+  inicio:       string
+  fin:          string
+  calidad:      'Excelente' | 'Muy buena' | 'Buena' | 'Regular'
   colorCalidad: string
 }
 
@@ -65,12 +76,29 @@ function scorePresion(hPa: number | null): number {
   return 45
 }
 
+function detalleMarea(extremos: ExtremoMarea[], nowMs: number): string {
+  if (!extremos.length) return 'Sin datos'
+  const next = extremos.find(e => e.ts >= nowMs)
+  if (!next) return 'Sin datos'
+  const diffMs = next.ts - nowMs
+  const h = Math.floor(diffMs / 3_600_000)
+  const m = Math.round((diffMs % 3_600_000) / 60_000)
+  const tipo = next.tipo === 'Pleamar' ? 'pleamar' : 'bajamar'
+  if (diffMs < 5 * 60_000) return `${tipo} ahora`
+  if (h > 0) return `${tipo} en ${h}h ${m}m`
+  return `${tipo} en ${m}m`
+}
+
+function estadoFrom(score: number, umbralBueno: number, umbralRegular: number): 'bueno' | 'regular' | 'malo' {
+  return score >= umbralBueno ? 'bueno' : score >= umbralRegular ? 'regular' : 'malo'
+}
+
 export function calcularCondiciones(p: {
-  fase: FaseLunar
-  maxKts: number | null
-  extremos: ExtremoMarea[]
+  fase:       FaseLunar
+  maxKts:     number | null
+  extremos:   ExtremoMarea[]
   presionHPa: number | null
-  nowMs: number
+  nowMs:      number
 }): ResultadoCondiciones {
   const sLuna    = scoreLuna(p.fase)
   const sViento  = p.maxKts !== null ? scoreViento(p.maxKts) : 65
@@ -86,27 +114,66 @@ export function calcularCondiciones(p: {
   else if (score >= 40) { etiqueta = 'REGULARES';  color = '#FBBF24' }
   else                  { etiqueta = 'DIFÍCILES';  color = '#F87171' }
 
+  const factores: FactorScore[] = [
+    {
+      icono:    '🌙',
+      nombre:   'Luna',
+      peso:     0.25,
+      subScore: sLuna,
+      puntos:   Math.round(sLuna * 0.25),
+      detalle:  p.fase,
+      estado:   estadoFrom(sLuna, 80, 55),
+    },
+    {
+      icono:    '💨',
+      nombre:   'Viento',
+      peso:     0.30,
+      subScore: sViento,
+      puntos:   Math.round(sViento * 0.30),
+      detalle:  p.maxKts !== null ? `${p.maxKts} kt máx` : 'Sin datos',
+      estado:   estadoFrom(sViento, 80, 50),
+    },
+    {
+      icono:    '🌊',
+      nombre:   'Marea',
+      peso:     0.25,
+      subScore: sMarea,
+      puntos:   Math.round(sMarea * 0.25),
+      detalle:  detalleMarea(p.extremos, p.nowMs),
+      estado:   estadoFrom(sMarea, 80, 50),
+    },
+    {
+      icono:    '⏱',
+      nombre:   'Presión',
+      peso:     0.20,
+      subScore: sPresion,
+      puntos:   Math.round(sPresion * 0.20),
+      detalle:  p.presionHPa !== null ? `${p.presionHPa} hPa` : 'Sin datos',
+      estado:   estadoFrom(sPresion, 75, 50),
+    },
+  ]
+
   const condiciones: CondicionItem[] = [
     {
-      icono: '⏱',
-      label: p.presionHPa !== null
+      icono:  '⏱',
+      label:  p.presionHPa !== null
         ? (sPresion >= 75 ? 'Presión estable' : 'Presión inestable')
         : 'Presión sin datos',
-      estado: sPresion >= 75 ? 'bueno' : sPresion >= 50 ? 'regular' : 'malo',
+      estado: estadoFrom(sPresion, 75, 50),
     },
     {
-      icono: '💨',
-      label: sViento >= 80 ? 'Viento favorable'
-           : sViento >= 50 ? 'Viento moderado'
-           : 'Viento fuerte',
-      estado: sViento >= 80 ? 'bueno' : sViento >= 50 ? 'regular' : 'malo',
+      icono:  '💨',
+      label:  sViento >= 80 ? 'Viento favorable'
+            : sViento >= 50 ? 'Viento moderado'
+            : 'Viento fuerte',
+      estado: estadoFrom(sViento, 80, 50),
     },
     {
-      icono: '🌊',
-      label: sMarea >= 80 ? 'Marea en movimiento'
-           : sMarea >= 50 ? 'Marea moderada'
-           : 'Marea quieta',
-      estado: sMarea >= 80 ? 'bueno' : sMarea >= 50 ? 'regular' : 'malo',
+      icono:  '🌊',
+      label:  sMarea >= 80 ? 'Marea en movimiento'
+            : sMarea >= 50 ? 'Marea moderada'
+            : 'Marea quieta',
+      estado: estadoFrom(sMarea, 80, 50),
     },
   ]
 
@@ -117,7 +184,7 @@ export function calcularCondiciones(p: {
       ? `${buenas[0].charAt(0).toUpperCase() + buenas[0].slice(1)} favorece la actividad.`
     : 'Condiciones desafiantes hoy.'
 
-  return { score, etiqueta, color, condiciones, explicacion }
+  return { score, etiqueta, color, factores, condiciones, explicacion }
 }
 
 function fmtHora(ts: number) {
