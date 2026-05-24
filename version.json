@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
-  "apk_url": "https://github.com/luccaOpro/app-pesca/releases/download/v1.1.0/app-debug.apk",
-  "notas": "Desglose del score de pesca (tocá el gauge) y notas de versión al instalar actualizaciones."
+  "version": "1.1.1",
+  "apk_url": "https://github.com/luccaOpro/app-pesca/releases/download/v1.1.1/app-debug.apk",
+  "notas": "Fix descarga de actualizaciones + desglose del score de pesca + notas de versión."
 }
