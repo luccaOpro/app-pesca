@@ -1,0 +1,22 @@
+node_modules/
+dist/
+.env
+.env.*
+
+# Android build
+android/app/build/
+android/.gradle/
+android/local.properties
+android/app/.cxx/
+
+# Capacitor
+ios/
+.capacitor/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

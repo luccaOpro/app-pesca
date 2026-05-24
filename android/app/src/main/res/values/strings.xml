@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Tormenta de Facha</string>
+    <string name="title_activity_main">Tormenta de Facha</string>
+    <string name="package_name">com.lucca.pesca</string>
+    <string name="custom_url_scheme">com.lucca.pesca</string>
+</resources>

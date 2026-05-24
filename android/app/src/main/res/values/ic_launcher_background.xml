@@ -1,0 +1,5 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Color de fondo del ícono adaptativo - navy principal de la app -->
+    <color name="ic_launcher_background">#0B1928</color>
+</resources>

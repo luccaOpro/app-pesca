@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/* ── Design tokens ────────────────────────────────── */
+:root {
+  --card-bg:     rgba(10, 24, 48, 0.72);
+  --card-border: rgba(255, 255, 255, 0.07);
+  --card-shadow: 0 4px 28px rgba(0, 0, 0, 0.4), 0 1px 0 rgba(255,255,255,0.04) inset;
+
+  /* Safe-area (notch/status-bar arriba, gesture/3-button nav abajo).
+     En navegadores sin notch los env() son 0. */
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left, 0px);
+  --safe-right:  env(safe-area-inset-right, 0px);
+
+  /* Altura del bottom-nav real (chrome + safe-area). Se usa como `bottom`
+     de los contenedores fijos de cada tab para no quedar tapados. */
+  --nav-base: 56px;
+  --nav-h:    calc(var(--nav-base) + var(--safe-bottom));
+}
+
+/* ── Glassmorphism card utility ───────────────────── */
+@layer utilities {
+  .card-glass {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    box-shadow: var(--card-shadow);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  /* Padding seguro top/bottom */
+  .pt-safe   { padding-top:    var(--safe-top); }
+  .pb-safe   { padding-bottom: var(--safe-bottom); }
+  .pt-safe-plus-3 { padding-top: calc(var(--safe-top) + 0.75rem); }
+  .pb-nav    { padding-bottom: var(--nav-h); }
+  .bottom-nav { bottom: var(--nav-h); }
+  .h-nav-bar  { height: var(--nav-h); }
+}
+
+/* ── Base ─────────────────────────────────────────── */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  min-height: 100svh;
+  /* Fondo degradado: azul-profundo en gradiente náutico */
+  background-color: #0B1928;
+  background-image:
+    linear-gradient(165deg,
+      #0E2548 0%,
+      #0B1F3A 30%,
+      #091729 65%,
+      #060D18 100%
+    );
+  background-attachment: fixed;
+  color: #E2EDF8;
+  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button { font: inherit; }
+
+/* Scrollbar discreta en mobile */
+* { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
