@@ -1,5 +1,5 @@
 {
-  "version": "1.1.2",
-  "apk_url": "https://github.com/luccaOpro/app-pesca/releases/download/v1.1.2/app-debug.apk",
-  "notas": "Viento ahora en km/h en toda la app."
+  "version": "1.2.0",
+  "apk_url": "https://github.com/luccaOpro/app-pesca/releases/download/v1.2.0/app-debug.apk",
+  "notas": "Spots tipados en el mapa: Captura, Buen lugar, Enganche, Peligro, Bajada y Nota."
 }

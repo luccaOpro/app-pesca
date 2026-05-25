@@ -4,7 +4,7 @@ import { LeafletMapa } from '../components/LeafletMapa'
 import { useGPS } from '../hooks/useGPS'
 import { useTracker } from '../hooks/useTracker'
 import { saveTrack, formatDuracion, type Track } from '../lib/tracks'
-import { getSpots, saveSpot, deleteSpot, type Spot } from '../lib/spots'
+import { getSpots, saveSpot, deleteSpot, type Spot, type TipoSpot, TIPOS_SPOT } from '../lib/spots'
 import { getCapturas, type Captura } from '../lib/capturas'
 
 // ─────────────────────────────────────────────────────────────
@@ -35,19 +35,26 @@ function crearIconoBarco(heading: number | null): L.DivIcon {
   })
 }
 
-function crearIconoSpot(): L.DivIcon {
+function crearIconoPorTipo(tipo: TipoSpot): L.DivIcon {
+  const cfg = TIPOS_SPOT[tipo]
+  // unique filter id per type to avoid SVG filter conflicts
+  const fid = `sp_${tipo}`
   return L.divIcon({
     className: '',
-    iconAnchor: [12, 30],
-    iconSize:   [24, 30],
+    iconAnchor: [14, 36],
+    iconSize:   [28, 36],
     html: `
-      <svg viewBox="0 0 24 30" width="24" height="30" xmlns="http://www.w3.org/2000/svg">
-        <defs><filter id="sp"><feDropShadow dx="0" dy="1" stdDeviation="1.2"
-          flood-color="#000" flood-opacity="0.45"/></filter></defs>
-        <path d="M12 0C7.58 0 4 3.58 4 8c0 5.5 8 16 8 16S20 13.5 20 8c0-4.42-3.58-8-8-8z"
-              fill="#F59E0B" stroke="#fff" stroke-width="1.2" filter="url(#sp)"/>
-        <circle cx="12" cy="8" r="3.5" fill="#fff"/>
-      </svg>`,
+      <div style="position:relative;width:28px;height:36px">
+        <svg viewBox="0 0 28 36" width="28" height="36" xmlns="http://www.w3.org/2000/svg">
+          <defs><filter id="${fid}"><feDropShadow dx="0" dy="1.5" stdDeviation="1.5"
+            flood-color="#000" flood-opacity="0.5"/></filter></defs>
+          <path d="M14 1C9.03 1 4.5 5.03 4.5 10.5c0 7 9.5 20 9.5 20s9.5-13 9.5-20C23.5 5.03 18.97 1 14 1z"
+                fill="${cfg.color}" stroke="#fff" stroke-width="1.5" filter="url(#${fid})"/>
+        </svg>
+        <div style="position:absolute;top:2px;left:0;width:28px;
+                    text-align:center;font-size:13px;line-height:1;
+                    filter:drop-shadow(0 1px 1px rgba(0,0,0,0.4))">${cfg.emoji}</div>
+      </div>`,
   })
 }
 
@@ -214,7 +221,7 @@ export function MapaNautico({ onTrackGuardado }: Props) {
   const [spots, setSpots]             = useState<Spot[]>(() => getSpots())
   const [capturas, setCapturas]       = useState<Captura[]>(() => getCapturas())
   const [mostrarCapturas, setMostrarCapturas] = useState(true)
-  const [nuevoSpot, setNuevoSpot]     = useState<{ latlng: L.LatLng; nombre: string } | null>(null)
+  const [nuevoSpot, setNuevoSpot]     = useState<{ latlng: L.LatLng; nombre: string; tipo: TipoSpot } | null>(null)
   const [mapReady, setMapReady]       = useState(false)
   const [zoom, setZoom]               = useState(13)
   const [bearing, setBearingState]    = useState(0)  // bearing actual del mapa
@@ -252,16 +259,16 @@ export function MapaNautico({ onTrackGuardado }: Props) {
       const me = e as L.LeafletMouseEvent
       if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null }
       tentativoRef.current?.remove()
-      tentativoRef.current = L.marker(me.latlng, { icon: crearIconoSpot() }).addTo(map)
-      setNuevoSpot({ latlng: me.latlng, nombre: '' })
+      tentativoRef.current = L.marker(me.latlng, { icon: crearIconoPorTipo('buen_lugar') }).addTo(map)
+      setNuevoSpot({ latlng: me.latlng, nombre: '', tipo: 'buen_lugar' })
     })
     // mousedown fallback for browsers that don't fire contextmenu on long-press
     map.on('mousedown', (e: L.LeafletEvent) => {
       const me = e as L.LeafletMouseEvent
       longPressRef.current = setTimeout(() => {
         tentativoRef.current?.remove()
-        tentativoRef.current = L.marker(me.latlng, { icon: crearIconoSpot() }).addTo(map)
-        setNuevoSpot({ latlng: me.latlng, nombre: '' })
+        tentativoRef.current = L.marker(me.latlng, { icon: crearIconoPorTipo('buen_lugar') }).addTo(map)
+        setNuevoSpot({ latlng: me.latlng, nombre: '', tipo: 'buen_lugar' })
       }, 700)
     })
     map.on('mouseup mousemove', () => {
@@ -271,6 +278,12 @@ export function MapaNautico({ onTrackGuardado }: Props) {
       }
     })
   }, [])
+
+  // ── Actualizar icono tentativo cuando cambia el tipo ─────────────────────
+  useEffect(() => {
+    if (!nuevoSpot || !tentativoRef.current) return
+    tentativoRef.current.setIcon(crearIconoPorTipo(nuevoSpot.tipo))
+  }, [nuevoSpot?.tipo])
 
   // ── GPS + barco + breadcrumb ──────────────────────────────────────────────
   useEffect(() => {
@@ -347,10 +360,13 @@ export function MapaNautico({ onTrackGuardado }: Props) {
     spotMarkersRef.current.clear()
 
     spots.forEach(spot => {
-      const marker = L.marker([spot.lat, spot.lon], { icon: crearIconoSpot() })
+      const cfg = TIPOS_SPOT[spot.tipo]
+      const marker = L.marker([spot.lat, spot.lon], { icon: crearIconoPorTipo(spot.tipo) })
         .addTo(map)
         .bindPopup(`
-          <div style="text-align:center;min-width:130px;font-family:system-ui">
+          <div style="text-align:center;min-width:140px;font-family:system-ui">
+            <p style="font-size:11px;margin:0 0 3px;color:${cfg.color};font-weight:600">
+              ${cfg.emoji} ${cfg.label}</p>
             <p style="font-weight:700;margin:0 0 2px;font-size:14px;color:#f1f5f9">${spot.nombre}</p>
             <p style="font-size:11px;color:#94a3b8;margin:0 0 8px">
               ${spot.lat.toFixed(5)}, ${spot.lon.toFixed(5)}</p>
@@ -450,12 +466,14 @@ export function MapaNautico({ onTrackGuardado }: Props) {
 
   function confirmarSpot() {
     if (!nuevoSpot) return
+    const cfg = TIPOS_SPOT[nuevoSpot.tipo]
     saveSpot({
-      id: Date.now().toString(),
-      nombre: nuevoSpot.nombre.trim() || 'Spot sin nombre',
-      lat: nuevoSpot.latlng.lat,
-      lon: nuevoSpot.latlng.lng,
-      fecha: Date.now(),
+      id:     Date.now().toString(),
+      nombre: nuevoSpot.nombre.trim() || cfg.label,
+      tipo:   nuevoSpot.tipo,
+      lat:    nuevoSpot.latlng.lat,
+      lon:    nuevoSpot.latlng.lng,
+      fecha:  Date.now(),
     })
     setSpots(getSpots())
     tentativoRef.current?.remove(); tentativoRef.current = null
@@ -682,35 +700,71 @@ export function MapaNautico({ onTrackGuardado }: Props) {
 
       {/* ── Panel: guardar spot ───────────────────────────────── */}
       {nuevoSpot && (
-        <div className="shrink-0 bg-[#0B1928]/98 border-t border-white/[0.07] px-4 pt-4 pb-5 flex flex-col gap-3">
+        <div className="shrink-0 bg-[#0B1928]/98 border-t border-white/[0.07] px-4 pt-3 pb-4 flex flex-col gap-2.5">
+
+          {/* Encabezado */}
           <div className="flex items-center gap-2">
-            <span className="text-amber-400">
+            <span style={{ color: TIPOS_SPOT[nuevoSpot.tipo].color }}>
               <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
                 <path d="M12 0C7.58 0 4 3.58 4 8c0 5.5 8 16 8 16s8-10.5 8-16c0-4.42-3.58-8-8-8zm0 11c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/>
               </svg>
             </span>
-            <p className="text-sm font-semibold text-slate-200">Guardar spot</p>
-            <span className="text-[10px] text-slate-500 ml-auto">
+            <p className="text-sm font-semibold text-slate-200">Nuevo spot</p>
+            <span className="text-[10px] text-slate-600 ml-auto font-mono">
               {nuevoSpot.latlng.lat.toFixed(5)}, {nuevoSpot.latlng.lng.toFixed(5)}
             </span>
           </div>
+
+          {/* Selector de tipo — grid 3×2 */}
+          <div className="grid grid-cols-3 gap-1.5">
+            {(Object.keys(TIPOS_SPOT) as TipoSpot[]).map(tipo => {
+              const cfg = TIPOS_SPOT[tipo]
+              const sel = nuevoSpot.tipo === tipo
+              return (
+                <button
+                  key={tipo}
+                  type="button"
+                  onClick={() => setNuevoSpot(s => s ? { ...s, tipo } : s)}
+                  className="flex items-center gap-1.5 px-2 py-2 rounded-xl text-xs font-medium transition-all border"
+                  style={sel ? {
+                    background:   `${cfg.color}22`,
+                    borderColor:  `${cfg.color}66`,
+                    color:         cfg.color,
+                  } : {
+                    background:   'rgba(255,255,255,0.03)',
+                    borderColor:  'rgba(255,255,255,0.07)',
+                    color:        '#64748b',
+                  }}
+                >
+                  <span className="text-base leading-none">{cfg.emoji}</span>
+                  <span className="leading-tight">{cfg.label}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Nombre (opcional) */}
           <input
-            type="text" autoFocus
-            placeholder="Nombre del spot (ej: Punta del tigre)"
+            type="text"
+            placeholder={`Nombre (opcional)`}
             value={nuevoSpot.nombre}
             onChange={e => setNuevoSpot(s => s ? { ...s, nombre: e.target.value } : s)}
             onKeyDown={e => e.key === 'Enter' && confirmarSpot()}
-            className="w-full bg-white/[0.05] border border-white/[0.09] rounded-xl px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 outline-none focus:border-amber-500/50"
+            className="w-full bg-white/[0.05] border border-white/[0.09] rounded-xl px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 outline-none focus:border-teal-500/50"
           />
+
+          {/* Acciones */}
           <div className="flex gap-2">
             <button onClick={cancelarSpot}
                     className="flex-1 py-2.5 rounded-xl text-sm font-medium text-slate-400 border border-white/[0.07]">
               Cancelar
             </button>
-            <button onClick={confirmarSpot}
-                    className="flex-[2] py-2.5 rounded-xl text-sm font-semibold text-slate-900"
-                    style={{ background: 'linear-gradient(135deg,#F59E0B,#D97706)' }}>
-              Guardar spot
+            <button
+              onClick={confirmarSpot}
+              className="flex-[2] py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
+              style={{ background: `linear-gradient(135deg,${TIPOS_SPOT[nuevoSpot.tipo].color},${TIPOS_SPOT[nuevoSpot.tipo].color}aa)` }}
+            >
+              {TIPOS_SPOT[nuevoSpot.tipo].emoji} Guardar spot
             </button>
           </div>
         </div>
