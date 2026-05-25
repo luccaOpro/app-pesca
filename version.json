@@ -1,5 +1,5 @@
 {
-  "version": "1.3.0",
-  "apk_url": "https://github.com/luccaOpro/app-pesca/releases/download/v1.3.0/app-debug.apk",
-  "notas": "Ajustes con buscar actualizaciones + 4 capas de mapa (Satelital, Oceanico, Oscuro, Estandar)."
+  "version": "1.4.0",
+  "apk_url": "https://github.com/luccaOpro/app-pesca/releases/download/v1.4.0/app-debug.apk",
+  "notas": "Widgets personalizables: reordena, muestra u oculta bloques desde Ajustes o manteniendo presionada la pantalla."
 }
