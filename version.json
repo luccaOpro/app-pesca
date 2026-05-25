@@ -1,5 +1,5 @@
 {
-  "version": "1.4.0",
-  "apk_url": "https://github.com/luccaOpro/app-pesca/releases/download/v1.4.0/app-debug.apk",
-  "notas": "Widgets personalizables: reordena, muestra u oculta bloques desde Ajustes o manteniendo presionada la pantalla."
+  "version": "1.4.1",
+  "apk_url": "https://github.com/luccaOpro/app-pesca/releases/download/v1.4.1/app-debug.apk",
+  "notas": "Boton para reintentar permiso de GPS, re-check de updates al volver del fondo y arreglo del spot duplicado al mantener presionado el mapa."
 }
