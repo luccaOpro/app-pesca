@@ -130,7 +130,7 @@ export function calcularCondiciones(p: {
       peso:     0.30,
       subScore: sViento,
       puntos:   Math.round(sViento * 0.30),
-      detalle:  p.maxKts !== null ? `${p.maxKts} kt máx` : 'Sin datos',
+      detalle:  p.maxKts !== null ? `${Math.round(p.maxKts * 1.852)} km/h máx` : 'Sin datos',
       estado:   estadoFrom(sViento, 80, 50),
     },
     {

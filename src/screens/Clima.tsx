@@ -93,7 +93,7 @@ function DiaCard({ dia, isHoy }: { dia: DiaPronostico; isHoy: boolean }) {
             <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/>
             <path d="M9.6 4.6A2 2 0 1 1 11 8H2"/>
           </svg>
-          <span className="text-[10px] font-mono text-slate-500 tabular-nums">{dia.vientoKts} kt</span>
+          <span className="text-[10px] font-mono text-slate-500 tabular-nums">{Math.round(dia.vientoKts * 1.852)} km/h</span>
         </div>
       </div>
     </div>
@@ -115,7 +115,7 @@ function VientoHorarioExpandido({ horas }: { horas: HoraViento[] }) {
         <h2 className="text-[11px] font-semibold tracking-[0.14em] uppercase text-slate-500">
           Viento próximas {horas.length}h
         </h2>
-        <span className="text-[10px] text-slate-600">kt · nudos</span>
+        <span className="text-[10px] text-slate-600">km/h</span>
       </div>
 
       <div className="flex items-end gap-1 overflow-x-auto pb-1">
@@ -125,7 +125,7 @@ function VientoHorarioExpandido({ horas }: { horas: HoraViento[] }) {
           return (
             <div key={h.ts} className="flex flex-col items-center gap-1 min-w-[30px] flex-1">
               <span className="text-[10px] font-mono tabular-nums text-slate-300 leading-none">
-                {h.speedKts}
+                {Math.round(h.speedKts * 1.852)}
               </span>
               <div className="w-full flex items-end justify-center" style={{ height: BAR_H }}>
                 <div
@@ -147,11 +147,11 @@ function VientoHorarioExpandido({ horas }: { horas: HoraViento[] }) {
 
       {/* Leyenda de colores */}
       <div className="mt-3 flex items-center gap-3 text-[9px] text-slate-600">
-        <LegendDot color="#00D1BD" label="≤5" />
-        <LegendDot color="#86EFAC" label="≤10" />
-        <LegendDot color="#FBBF24" label="≤15" />
-        <LegendDot color="#F97316" label="≤25" />
-        <LegendDot color="#EF4444" label=">25" />
+        <LegendDot color="#00D1BD" label="≤9" />
+        <LegendDot color="#86EFAC" label="≤19" />
+        <LegendDot color="#FBBF24" label="≤28" />
+        <LegendDot color="#F97316" label="≤46" />
+        <LegendDot color="#EF4444" label=">46" />
       </div>
     </section>
   )
@@ -186,7 +186,7 @@ function MapaWindy({ location }: { location: FishingLocation }) {
     type:       'map',
     location:   'coordinates',
     detail:     '',
-    metricWind: 'kt',
+    metricWind: 'km/h',
     metricTemp: '°C',
   })
 

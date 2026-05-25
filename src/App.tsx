@@ -213,7 +213,7 @@ function SolunarCard({ periodos, periodoActual, nowMs }: {
 
 function VientoHorarioCard({ horas }: { horas: HoraViento[] }) {
   if (horas.length === 0) return null
-  const maxKt = Math.max(10, ...horas.map(h => h.speedKts))   // mín 10 para escala estable
+  const maxKt = Math.max(10, ...horas.map(h => h.speedKts))   // escala interna en kt
   const BAR_H = 48
 
   return (
@@ -222,7 +222,7 @@ function VientoHorarioCard({ horas }: { horas: HoraViento[] }) {
         <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-slate-500">
           Viento próximas {horas.length}h
         </p>
-        <p className="text-[10px] text-slate-600">kt</p>
+        <p className="text-[10px] text-slate-600">km/h</p>
       </div>
 
       <div className="flex items-end gap-[3px] overflow-x-auto pb-1">
@@ -233,7 +233,7 @@ function VientoHorarioCard({ horas }: { horas: HoraViento[] }) {
             <div key={h.ts} className="flex flex-col items-center gap-1 min-w-[26px] flex-1">
               {/* Velocidad */}
               <span className="text-[10px] font-mono tabular-nums text-slate-300 leading-none">
-                {h.speedKts}
+                {kmh(h.speedKts)}
               </span>
               {/* Barra */}
               <div className="w-full flex items-end justify-center" style={{ height: BAR_H }}>
@@ -520,7 +520,7 @@ function PronosticoDia({ dia, isHoy }: { dia: { diaSemana: string; tempMax: numb
           <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/>
           <path d="M9.6 4.6A2 2 0 1 1 11 8H2"/>
         </svg>
-        <span className="text-[9px] font-mono text-slate-600">{dia.vientoKts}kt</span>
+        <span className="text-[9px] font-mono text-slate-600">{kmh(dia.vientoKts)} km/h</span>
       </div>
     </div>
   )
@@ -646,11 +646,11 @@ function App() {
       const { max, cuadrante } = viento.data
       const esSudestada = cuadrante === 'SE' || cuadrante === 'S'
       if (max >= 25 && esSudestada) {
-        lista.push({ msg: `Posible sudestada — viento del ${cuadrante} a ${max} kt`, nivel: 'peligroso' })
+        lista.push({ msg: `Posible sudestada — viento del ${cuadrante} a ${kmh(max)} km/h`, nivel: 'peligroso' })
       } else if (max >= 25) {
-        lista.push({ msg: `Viento muy fuerte — ${max} kt del ${cuadrante}`, nivel: 'peligroso' })
+        lista.push({ msg: `Viento muy fuerte — ${kmh(max)} km/h del ${cuadrante}`, nivel: 'peligroso' })
       } else if (max >= 20) {
-        lista.push({ msg: `Viento fuerte — ${max} kt del ${cuadrante}`, nivel: 'precaucion' })
+        lista.push({ msg: `Viento fuerte — ${kmh(max)} km/h del ${cuadrante}`, nivel: 'precaucion' })
       }
     }
     const wmo = pronostico.dias[0]?.wmoCode
@@ -891,7 +891,7 @@ function App() {
             <section className="card-glass rounded-2xl p-4 flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <h2 className="text-[11px] font-semibold tracking-[0.14em] uppercase text-slate-500 select-none">Viento</h2>
-                <span className="text-[9px] text-slate-600 font-mono">kt · nudos</span>
+                <span className="text-[9px] text-slate-600 font-mono">km/h</span>
               </div>
               {viento.loading && <p className="text-slate-500 text-xs">Cargando…</p>}
               {viento.error   && <p className="text-red-400 text-xs">Sin datos</p>}
@@ -899,14 +899,12 @@ function App() {
                 <div className="flex items-center justify-between gap-1 mt-1">
                   <div className="flex-1 flex flex-col items-center gap-0.5">
                     <p className="text-[10px] font-semibold tracking-widest text-slate-500 uppercase">MÍN</p>
-                    <p className="text-[22px] font-mono text-slate-100 leading-none">{viento.data.min}</p>
-                    <p className="text-[10px] text-slate-500">{kmh(viento.data.min)} km/h</p>
+                    <p className="text-[22px] font-mono text-slate-100 leading-none">{kmh(viento.data.min)}</p>
                   </div>
                   <div className="w-px h-10 bg-white/[0.08] shrink-0" />
                   <div className="flex-1 flex flex-col items-center gap-0.5">
                     <p className="text-[10px] font-semibold tracking-widest text-slate-500 uppercase">MÁX</p>
-                    <p className="text-[22px] font-mono text-slate-100 leading-none">{viento.data.max}</p>
-                    <p className="text-[10px] text-slate-500">{kmh(viento.data.max)} km/h</p>
+                    <p className="text-[22px] font-mono text-slate-100 leading-none">{kmh(viento.data.max)}</p>
                   </div>
                   <div className="w-px h-10 bg-white/[0.08] shrink-0" />
                   <div className="flex-1 flex flex-col items-center gap-0.5">
