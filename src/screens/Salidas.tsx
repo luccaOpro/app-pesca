@@ -438,6 +438,12 @@ export function Salidas({ onIniciarSalida, locationName, onLocationClick }: Prop
   const [capturas,      setCapturas]      = useState<Captura[]>(() => getCapturas())
   const [formAbierto,   setFormAbierto]   = useState(false)
 
+  // Refrescar al montar (cuando el usuario vuelve del tab Mapa)
+  useEffect(() => {
+    setTracks(getTracks())
+    setCapturas(getCapturas())
+  }, [])
+
   useEffect(() => {
     if (pantallaVista === 'lista') {
       setTracks(getTracks())

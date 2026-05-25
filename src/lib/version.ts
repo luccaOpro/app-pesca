@@ -1,4 +1,4 @@
-export const APP_VERSION = '1.2.0'
+export const APP_VERSION = '1.2.1'
 
 export interface NotaVersion {
   version: string
@@ -6,10 +6,10 @@ export interface NotaVersion {
 }
 
 export const NOTAS_ACTUALES: NotaVersion = {
-  version: '1.2.0',
+  version: '1.2.1',
   items: [
-    'Spots tipados: Captura, Buen lugar, Enganche, Peligro, Bajada y Nota',
-    'Cada tipo tiene su propio ícono y color en el mapa',
-    'El nombre del spot ahora es opcional',
+    'Las grabaciones ya no se pierden si el GPS tardó en fijar o el barco estaba quieto',
+    'Al detener la grabación aparece un panel con distancia, duración y botón "Ver en Bitácora"',
+    'Corrección: la salida se guardaba pero no había forma de saberlo',
   ],
 }

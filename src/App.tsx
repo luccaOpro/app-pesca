@@ -935,7 +935,7 @@ function App() {
       {/* ── MAPA NÁUTICO ───────────────────────────── */}
       {tab === 'mapa' && (
         <div className="fixed inset-0 bottom-nav flex flex-col">
-          <MapaNautico />
+          <MapaNautico onVerSalidas={() => setTab('salidas')} />
         </div>
       )}
 

@@ -3,7 +3,7 @@ import L from 'leaflet'
 import { LeafletMapa } from '../components/LeafletMapa'
 import { useGPS } from '../hooks/useGPS'
 import { useTracker } from '../hooks/useTracker'
-import { saveTrack, formatDuracion, type Track } from '../lib/tracks'
+import { saveTrack, formatDuracion, type Track, type PuntoGPS } from '../lib/tracks'
 import { getSpots, saveSpot, deleteSpot, type Spot, type TipoSpot, TIPOS_SPOT } from '../lib/spots'
 import { getCapturas, type Captura } from '../lib/capturas'
 
@@ -212,9 +212,10 @@ function MiniCompass({ heading }: { heading: number }) {
 
 interface Props {
   onTrackGuardado?: (track: Track) => void
+  onVerSalidas?:    () => void
 }
 
-export function MapaNautico({ onTrackGuardado }: Props) {
+export function MapaNautico({ onTrackGuardado, onVerSalidas }: Props) {
   const [grabando, setGrabando]       = useState(false)
   const [seamark, setSeamark]         = useState(false)
   const [trackUp, setTrackUp]         = useState(false)
@@ -222,6 +223,7 @@ export function MapaNautico({ onTrackGuardado }: Props) {
   const [capturas, setCapturas]       = useState<Captura[]>(() => getCapturas())
   const [mostrarCapturas, setMostrarCapturas] = useState(true)
   const [nuevoSpot, setNuevoSpot]     = useState<{ latlng: L.LatLng; nombre: string; tipo: TipoSpot } | null>(null)
+  const [ultimaSalida, setUltimaSalida] = useState<Track | null>(null)
   const [mapReady, setMapReady]       = useState(false)
   const [zoom, setZoom]               = useState(13)
   const [bearing, setBearingState]    = useState(0)  // bearing actual del mapa
@@ -230,6 +232,14 @@ export function MapaNautico({ onTrackGuardado }: Props) {
   const hora    = useReloj()
   const gps     = useGPS(true)
   const tracker = useTracker(grabando)
+
+  // Captura el timestamp exacto en que empieza la grabación (fallback para duración)
+  const startedAtRef     = useRef<number>(0)
+  // Snapshot del tracker justo antes de hacer setGrabando(false) — evita
+  // que el cleanup de useTracker resetee los datos antes de poder leerlos
+  const trackerSnapRef   = useRef<{ puntos: PuntoGPS[]; distancia_nm: number; duracion_s: number }>({
+    puntos: [], distancia_nm: 0, duracion_s: 0,
+  })
 
   const mapRef           = useRef<L.Map | null>(null)
   const barcoRef         = useRef<L.Marker | null>(null)
@@ -446,20 +456,40 @@ export function MapaNautico({ onTrackGuardado }: Props) {
   }, [seamark, mapReady])
 
   // ── Handlers ──────────────────────────────────────────────────────────────
-  function iniciarGrabacion() { centradoRef.current = false; setGrabando(true) }
+  function iniciarGrabacion() {
+    startedAtRef.current = Date.now()
+    setUltimaSalida(null)
+    centradoRef.current  = false
+    setGrabando(true)
+  }
 
   function detenerGrabacion() {
+    // Capturar datos ANTES de setGrabando(false) para evitar que el cleanup
+    // de useTracker (setPuntos([]) etc.) nos pise los valores
+    const pts  = tracker.puntos
+    const dist = tracker.distancia_nm
+    // duracion_s se actualiza cada 1 s; si paró dentro del primer segundo
+    // usamos el timestamp directo como fallback
+    const dur  = tracker.duracion_s > 0
+      ? tracker.duracion_s
+      : Math.round((Date.now() - startedAtRef.current) / 1000)
+
+    trackerSnapRef.current = { puntos: pts, distancia_nm: dist, duracion_s: dur }
+
     setGrabando(false)
-    if (tracker.puntos.length >= 2) {
+
+    // Guardar si hay al menos 1 punto GPS o si se grabó por 5+ segundos
+    if (pts.length >= 1 || dur >= 5) {
       const track: Track = {
-        id: Date.now().toString(),
-        nombre: `Salida ${new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}`,
-        fecha: Date.now(),
-        puntos: tracker.puntos,
-        distancia_nm: tracker.distancia_nm,
-        duracion_s: tracker.duracion_s,
+        id:           Date.now().toString(),
+        nombre:       `Salida ${new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}`,
+        fecha:        Date.now(),
+        puntos:       pts,
+        distancia_nm: dist,
+        duracion_s:   dur,
       }
       saveTrack(track)
+      setUltimaSalida(track)
       onTrackGuardado?.(track)
     }
   }
@@ -770,8 +800,75 @@ export function MapaNautico({ onTrackGuardado }: Props) {
         </div>
       )}
 
+      {/* ── Panel: salida guardada ────────────────────────────── */}
+      {!nuevoSpot && ultimaSalida && (
+        <div className="shrink-0 bg-[#0B1928]/98 border-t border-teal-500/20 px-4 pt-4 pb-5 flex flex-col gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-teal-500/20 flex items-center justify-center shrink-0">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+                   stroke="#00D1BD" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-teal-300 leading-tight">¡Salida guardada!</p>
+              <p className="text-[11px] text-slate-500 truncate">{ultimaSalida.nombre}</p>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="flex items-center gap-4 px-1">
+            <div className="flex flex-col gap-0.5">
+              <p className="text-[9px] font-semibold tracking-widest text-slate-600 uppercase">Distancia</p>
+              <p className="text-[18px] font-mono text-slate-200 leading-none tabular-nums">
+                {ultimaSalida.distancia_nm.toFixed(2)}
+                <span className="text-[11px] text-slate-500 ml-1">mn</span>
+              </p>
+            </div>
+            <div className="w-px h-8 bg-white/[0.06]" />
+            <div className="flex flex-col gap-0.5">
+              <p className="text-[9px] font-semibold tracking-widest text-slate-600 uppercase">Duración</p>
+              <p className="text-[18px] font-mono text-slate-200 leading-none">
+                {formatDuracion(ultimaSalida.duracion_s)}
+              </p>
+            </div>
+            {ultimaSalida.puntos.length > 0 && (
+              <>
+                <div className="w-px h-8 bg-white/[0.06]" />
+                <div className="flex flex-col gap-0.5">
+                  <p className="text-[9px] font-semibold tracking-widest text-slate-600 uppercase">Puntos GPS</p>
+                  <p className="text-[18px] font-mono text-slate-200 leading-none">
+                    {ultimaSalida.puntos.length}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Acciones */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setUltimaSalida(null)}
+              className="flex-1 py-2.5 rounded-xl text-sm font-medium text-slate-500 border border-white/[0.07]"
+            >
+              Cerrar
+            </button>
+            <button
+              onClick={() => { setUltimaSalida(null); onVerSalidas?.() }}
+              className="flex-[2] py-2.5 rounded-xl text-sm font-semibold text-slate-900 flex items-center justify-center gap-2"
+              style={{ background: 'linear-gradient(135deg,#00D1BD 0%,#00967F 100%)' }}
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                <path d="M21 3L3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z"/>
+              </svg>
+              Ver en Bitácora
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Panel: instrumentos ───────────────────────────────── */}
-      {!nuevoSpot && (
+      {!nuevoSpot && !ultimaSalida && (
         <div className="shrink-0 bg-[#060E1C] border-t border-white/[0.06]">
 
           {/* Grid instrumentos */}
