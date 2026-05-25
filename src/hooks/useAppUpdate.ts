@@ -27,6 +27,8 @@ export function useAppUpdate() {
   const [progreso,   setProgreso]   = useState(0)
   const [instalando, setInstalando] = useState(false)
   const [error,      setError]      = useState<string | null>(null)
+  const [checking,   setChecking]   = useState(false)
+  const [upToDate,   setUpToDate]   = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -36,6 +38,27 @@ export function useAppUpdate() {
       .then(info => { if (isNewer(info.version, APP_VERSION)) setUpdate(info) })
       .catch(() => {})
   }, [])
+
+  async function check() {
+    if (!Capacitor.isNativePlatform()) return
+    setChecking(true)
+    setUpToDate(false)
+    setError(null)
+    try {
+      const r    = await fetch(VERSION_URL, { cache: 'no-store' })
+      const info = await r.json() as UpdateInfo
+      if (isNewer(info.version, APP_VERSION)) {
+        setUpdate(info)
+      } else {
+        setUpdate(null)
+        setUpToDate(true)
+      }
+    } catch {
+      setError('No se pudo verificar. Revisá tu conexión.')
+    } finally {
+      setChecking(false)
+    }
+  }
 
   async function instalar() {
     if (!update) return
@@ -91,5 +114,5 @@ export function useAppUpdate() {
     setProgreso(0)
   }
 
-  return { update, progreso, instalando, error, instalar, cancelar }
+  return { update, progreso, instalando, error, checking, upToDate, instalar, cancelar, check }
 }

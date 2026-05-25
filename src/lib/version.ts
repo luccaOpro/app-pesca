@@ -1,4 +1,4 @@
-export const APP_VERSION = '1.2.1'
+export const APP_VERSION = '1.3.0'
 
 export interface NotaVersion {
   version: string
@@ -6,10 +6,10 @@ export interface NotaVersion {
 }
 
 export const NOTAS_ACTUALES: NotaVersion = {
-  version: '1.2.1',
+  version: '1.3.0',
   items: [
-    'Las grabaciones ya no se pierden si el GPS tardó en fijar o el barco estaba quieto',
-    'Al detener la grabación aparece un panel con distancia, duración y botón "Ver en Bitácora"',
-    'Corrección: la salida se guardaba pero no había forma de saberlo',
+    'Ajustes: engranaje en el inicio para buscar actualizaciones sin cerrar la app',
+    'Mapa con 4 capas: Estándar, Satelital (imagen real), Oceánico (batimetría) y Oscuro',
+    'Panel de Capas integra cartas náuticas y capa de capturas en un solo lugar',
   ],
 }

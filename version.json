@@ -1,5 +1,5 @@
 {
-  "version": "1.2.1",
-  "apk_url": "https://github.com/luccaOpro/app-pesca/releases/download/v1.2.1/app-debug.apk",
-  "notas": "Fix: grabaciones ya no se pierden. Nuevo panel de salida guardada con botón a Bitácora."
+  "version": "1.3.0",
+  "apk_url": "https://github.com/luccaOpro/app-pesca/releases/download/v1.3.0/app-debug.apk",
+  "notas": "Ajustes con buscar actualizaciones + 4 capas de mapa (Satelital, Oceanico, Oscuro, Estandar)."
 }

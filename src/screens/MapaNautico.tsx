@@ -8,6 +8,44 @@ import { getSpots, saveSpot, deleteSpot, type Spot, type TipoSpot, TIPOS_SPOT } 
 import { getCapturas, type Captura } from '../lib/capturas'
 
 // ─────────────────────────────────────────────────────────────
+//  Capas de mapa
+// ─────────────────────────────────────────────────────────────
+
+type CapaTile = 'estandar' | 'satelital' | 'oceanico' | 'oscuro'
+
+const TILES: Record<CapaTile, {
+  label:       string
+  emoji:       string
+  url:         string
+  attribution: string
+  maxZoom:     number
+  subdomains?: string
+}> = {
+  estandar: {
+    label: 'Estándar', emoji: '🗺',
+    url:  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '© OpenStreetMap', maxZoom: 19, subdomains: 'abc',
+  },
+  satelital: {
+    label: 'Satelital', emoji: '🛰',
+    // ESRI World Imagery — gratuito, sin clave API, resolución global excelente
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'ESRI World Imagery', maxZoom: 19,
+  },
+  oceanico: {
+    label: 'Oceánico', emoji: '🌊',
+    // ESRI Ocean Base — muestra batimetría, canales, profundidades; ideal para pesca
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'ESRI Ocean Basemap', maxZoom: 16,
+  },
+  oscuro: {
+    label: 'Oscuro', emoji: '🌙',
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attribution: '© CartoDB', maxZoom: 20, subdomains: 'abcd',
+  },
+}
+
+// ─────────────────────────────────────────────────────────────
 //  Iconos Leaflet
 // ─────────────────────────────────────────────────────────────
 
@@ -219,6 +257,10 @@ export function MapaNautico({ onTrackGuardado, onVerSalidas }: Props) {
   const [grabando, setGrabando]       = useState(false)
   const [seamark, setSeamark]         = useState(false)
   const [trackUp, setTrackUp]         = useState(false)
+  const [capaTile, setCapaTile]       = useState<CapaTile>(() =>
+    (localStorage.getItem('pesca:capaTile') as CapaTile) ?? 'estandar',
+  )
+  const [capasOpen, setCapasOpen]     = useState(false)
   const [spots, setSpots]             = useState<Spot[]>(() => getSpots())
   const [capturas, setCapturas]       = useState<Captura[]>(() => getCapturas())
   const [mostrarCapturas, setMostrarCapturas] = useState(true)
@@ -241,6 +283,7 @@ export function MapaNautico({ onTrackGuardado, onVerSalidas }: Props) {
     puntos: [], distancia_nm: 0, duracion_s: 0,
   })
 
+  const baseTileRef      = useRef<L.TileLayer | null>(null)
   const mapRef           = useRef<L.Map | null>(null)
   const barcoRef         = useRef<L.Marker | null>(null)
   const breadcrumbRef    = useRef<L.Polyline | null>(null)
@@ -257,6 +300,11 @@ export function MapaNautico({ onTrackGuardado, onVerSalidas }: Props) {
   // ── Map ready ────────────────────────────────────────────────────────────
   const handleMapReady = useCallback((map: L.Map) => {
     mapRef.current = map
+
+    // Quitar el tile OSM que LeafletMapa agrega por defecto;
+    // el useEffect de capaTile agregará la capa correcta en cuanto mapReady = true
+    map.eachLayer(l => { if (l instanceof L.TileLayer) map.removeLayer(l) })
+
     setMapReady(true)
 
     L.control.scale({ imperial: false, metric: true, position: 'bottomleft' }).addTo(map)
@@ -294,6 +342,30 @@ export function MapaNautico({ onTrackGuardado, onVerSalidas }: Props) {
     if (!nuevoSpot || !tentativoRef.current) return
     tentativoRef.current.setIcon(crearIconoPorTipo(nuevoSpot.tipo))
   }, [nuevoSpot?.tipo])
+
+  // ── Capa base del mapa (se ejecuta al montar y cada vez que cambia capaTile) ──
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+
+    // Reemplazar capa base anterior
+    if (baseTileRef.current) {
+      map.removeLayer(baseTileRef.current)
+      baseTileRef.current = null
+    }
+
+    const cfg  = TILES[capaTile]
+    const opts: L.TileLayerOptions = {
+      attribution: cfg.attribution,
+      maxZoom:     cfg.maxZoom,
+      ...(cfg.subdomains ? { subdomains: cfg.subdomains } : {}),
+    }
+    const tile = L.tileLayer(cfg.url, opts).addTo(map)
+    tile.bringToBack()
+    baseTileRef.current = tile
+
+    try { localStorage.setItem('pesca:capaTile', capaTile) } catch {}
+  }, [capaTile, mapReady])
 
   // ── GPS + barco + breadcrumb ──────────────────────────────────────────────
   useEffect(() => {
@@ -459,6 +531,7 @@ export function MapaNautico({ onTrackGuardado, onVerSalidas }: Props) {
   function iniciarGrabacion() {
     startedAtRef.current = Date.now()
     setUltimaSalida(null)
+    setCapasOpen(false)
     centradoRef.current  = false
     setGrabando(true)
   }
@@ -642,41 +715,26 @@ export function MapaNautico({ onTrackGuardado, onVerSalidas }: Props) {
             </svg>
           </button>
 
-          {/* Capa náutica */}
+          {/* Capas del mapa */}
           <button
-            onClick={() => setSeamark(s => !s)}
+            onClick={() => setCapasOpen(v => !v)}
             className={`w-9 h-9 rounded-full backdrop-blur-sm flex items-center justify-center transition-colors ${
-              seamark ? 'bg-teal-500 text-slate-900' : 'bg-black/70 text-slate-300 hover:text-teal-400'
+              capasOpen
+                ? 'bg-teal-500 text-slate-900'
+                : (seamark || capaTile !== 'estandar')
+                  ? 'bg-teal-500/30 text-teal-300 border border-teal-500/50'
+                  : 'bg-black/70 text-slate-300 hover:text-teal-400'
             }`}
-            title="Capa náutica"
+            title="Capas del mapa"
           >
+            {/* Stack / layers icon */}
             <svg viewBox="0 0 24 24" width="17" height="17" fill="none"
                  stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 17l1.5-9L12 3l7.5 5L21 17"/>
-              <path d="M3 17c0 0 3-2 9-2s9 2 9 2"/>
-              <path d="M12 3v14"/>
+              <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+              <polyline points="2 17 12 22 22 17"/>
+              <polyline points="2 12 12 17 22 12"/>
             </svg>
           </button>
-
-          {/* Toggle capturas */}
-          {capturas.some(c => c.lat != null) && (
-            <button
-              onClick={() => setMostrarCapturas(v => !v)}
-              className={`w-9 h-9 rounded-full backdrop-blur-sm flex items-center justify-center transition-colors ${
-                mostrarCapturas
-                  ? 'bg-amber-500 text-slate-900'
-                  : 'bg-black/70 text-slate-400 hover:text-amber-400'
-              }`}
-              title={mostrarCapturas ? 'Ocultar capturas' : 'Mostrar capturas'}
-            >
-              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor"
-                   strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6.5 12c0 0-1.5-6 5-6s10 6 10 6-4.5 6-10 6-5-6-5-6z"/>
-                <path d="M2 9c1 1 2.5 3 2.5 3S3 14 2 15"/>
-                <circle cx="15" cy="11" r="1" fill="currentColor" stroke="none"/>
-              </svg>
-            </button>
-          )}
 
           {/* Spots count */}
           {spots.length > 0 && (
@@ -867,8 +925,113 @@ export function MapaNautico({ onTrackGuardado, onVerSalidas }: Props) {
         </div>
       )}
 
+      {/* ── Panel: capas ──────────────────────────────────────── */}
+      {!nuevoSpot && !ultimaSalida && capasOpen && (
+        <div className="shrink-0 bg-[#0B1928]/98 border-t border-white/[0.07] px-4 pt-3 pb-5 flex flex-col gap-3">
+
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-bold tracking-[0.18em] text-slate-500 uppercase">Mapa base</p>
+            <button
+              onClick={() => setCapasOpen(false)}
+              className="text-slate-600 hover:text-slate-300 p-1 leading-none text-lg"
+            >✕</button>
+          </div>
+
+          {/* Grid de tiles — 4 opciones en una fila */}
+          <div className="grid grid-cols-4 gap-2">
+            {(Object.keys(TILES) as CapaTile[]).map(key => {
+              const cfg = TILES[key]
+              const sel = capaTile === key
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setCapaTile(key)}
+                  className="flex flex-col items-center gap-1.5 py-3 px-1 rounded-xl border transition-all"
+                  style={sel ? {
+                    background:  'rgba(0,209,189,0.12)',
+                    borderColor: 'rgba(0,209,189,0.45)',
+                  } : {
+                    background:  'rgba(255,255,255,0.03)',
+                    borderColor: 'rgba(255,255,255,0.07)',
+                  }}
+                >
+                  <span className="text-xl leading-none">{cfg.emoji}</span>
+                  <span className={`text-[10px] font-medium leading-tight text-center ${sel ? 'text-teal-300' : 'text-slate-500'}`}>
+                    {cfg.label}
+                  </span>
+                  {sel && (
+                    <span className="w-1 h-1 rounded-full bg-teal-400" />
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Divisor */}
+          <div className="h-px bg-white/[0.06]" />
+
+          {/* Overlays */}
+          <p className="text-[10px] font-bold tracking-[0.18em] text-slate-500 uppercase -mb-1">Capas sobre el mapa</p>
+          <div className="flex flex-col gap-1.5">
+            {/* Cartas náuticas */}
+            <button
+              type="button"
+              onClick={() => setSeamark(v => !v)}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-sm"
+              style={seamark ? {
+                background:  'rgba(59,130,246,0.12)',
+                borderColor: 'rgba(59,130,246,0.40)',
+                color:       '#93c5fd',
+              } : {
+                background:  'rgba(255,255,255,0.03)',
+                borderColor: 'rgba(255,255,255,0.07)',
+                color:       '#64748b',
+              }}
+            >
+              <span className="text-base leading-none">⚓</span>
+              <span className="font-medium flex-1 text-left">Cartas náuticas (OpenSeaMap)</span>
+              {seamark && (
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+                     stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              )}
+            </button>
+
+            {/* Capturas (solo si hay capturas con posición) */}
+            {capturas.some(c => c.lat != null) && (
+              <button
+                type="button"
+                onClick={() => setMostrarCapturas(v => !v)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-sm"
+                style={mostrarCapturas ? {
+                  background:  'rgba(245,158,11,0.12)',
+                  borderColor: 'rgba(245,158,11,0.40)',
+                  color:       '#fcd34d',
+                } : {
+                  background:  'rgba(255,255,255,0.03)',
+                  borderColor: 'rgba(255,255,255,0.07)',
+                  color:       '#64748b',
+                }}
+              >
+                <span className="text-base leading-none">🎣</span>
+                <span className="font-medium flex-1 text-left">Mis capturas en el mapa</span>
+                {mostrarCapturas && (
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+                       stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Panel: instrumentos ───────────────────────────────── */}
-      {!nuevoSpot && !ultimaSalida && (
+      {!nuevoSpot && !ultimaSalida && !capasOpen && (
         <div className="shrink-0 bg-[#060E1C] border-t border-white/[0.06]">
 
           {/* Grid instrumentos */}

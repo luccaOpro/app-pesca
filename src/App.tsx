@@ -20,6 +20,7 @@ import { calcularCondiciones, calcularVentanas, type CondicionItem, type Ventana
 import { calcularPeriodosSolunares, proximosPeriodos, periodoEnCurso, formatHora, type PeriodoSolunar } from './lib/solunar'
 import type { ExtremoMarea } from './lib/tide'
 import { APP_VERSION, NOTAS_ACTUALES } from './lib/version'
+import { AjustesSheet } from './components/AjustesSheet'
 import { Clima } from './screens/Clima'
 import { MapaNautico } from './screens/MapaNautico'
 import { Salidas } from './screens/Salidas'
@@ -574,6 +575,7 @@ function App() {
   const [tab,           setTab]           = useState<Tab>('inicio')
   const [updateVisible, setUpdateVisible] = useState(true)
   const [scoreOpen,     setScoreOpen]     = useState(false)
+  const [ajustesOpen,   setAjustesOpen]   = useState(false)
   const [notasVisible,  setNotasVisible]  = useState(() => {
     try { return localStorage.getItem('notasVersionVistas') !== APP_VERSION }
     catch { return false }
@@ -688,15 +690,29 @@ function App() {
             scoreColor={condiciones.color}
             onScoreClick={() => setScoreOpen(true)}
             extra={
-              appUpdate.update && !updateVisible ? (
+              <div className="flex items-center gap-2">
+                {appUpdate.update && !updateVisible && (
+                  <button
+                    onClick={() => setUpdateVisible(true)}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-teal-500/20 border border-teal-500/40 text-teal-300 text-[11px] font-semibold"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse shrink-0" />
+                    Actualizar
+                  </button>
+                )}
+                {/* Ajustes */}
                 <button
-                  onClick={() => setUpdateVisible(true)}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-teal-500/20 border border-teal-500/40 text-teal-300 text-[11px] font-semibold"
+                  onClick={() => setAjustesOpen(true)}
+                  className="w-8 h-8 rounded-full bg-white/[0.05] border border-white/[0.09] flex items-center justify-center text-slate-400 hover:text-slate-200 transition-colors active:opacity-70"
+                  title="Ajustes"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse shrink-0" />
-                  Actualizar
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none"
+                       stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
                 </button>
-              ) : undefined
+              </div>
             }
           />
 
@@ -984,6 +1000,21 @@ function App() {
             appUpdate.cancelar()
             setUpdateVisible(false)
           }}
+        />
+      )}
+
+      {/* ── AJUSTES ────────────────────────────────── */}
+      {ajustesOpen && (
+        <AjustesSheet
+          onCerrar={()  => setAjustesOpen(false)}
+          update={appUpdate.update}
+          checking={appUpdate.checking}
+          upToDate={appUpdate.upToDate}
+          instalando={appUpdate.instalando}
+          progreso={appUpdate.progreso}
+          error={appUpdate.error}
+          onCheck={appUpdate.check}
+          onInstalar={appUpdate.instalar}
         />
       )}
 
